@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow Deck 站点集</title>
+<style>
+:root{--ink:#1b1b20;--muted:#6b6b76;--line:#e6e4dd;--paper:#fffdf8;--accent:#5b6cff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#f5f3ed;color:var(--ink);font:15px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:72px 24px 96px}
+h1{font-size:34px;font-weight:500;letter-spacing:-.01em;margin:0 0 8px}
+.lead{color:var(--muted);margin:0 0 40px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{display:block;padding:22px 24px;border:1px solid var(--line);border-radius:18px;background:var(--paper);text-decoration:none;color:inherit;transition:transform .3s cubic-bezier(.22,1.28,.36,1),box-shadow .3s ease,border-color .3s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 18px 44px rgba(28,28,40,.14);border-color:#cfcbc0}
+.card h3{margin:0 0 6px;font-size:19px;font-weight:500}
+.card p{margin:0 0 14px;color:var(--muted);font-size:14px}
+.meta{font-size:12px;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Flow Deck</h1>
+<p class="lead">一份规格生成一个站点。点进去用「下一个」沿着流程走。</p>
+<div class="grid">
+    <a class="card" href="./01-internal-beta-review/index.html">
+      <h3>内测复盘</h3>
+      <p>流程图式可交互评审 · 可编辑 · 可投票 · 可标注</p>
+      <span class="meta">6 个节点 · 2 处投票 · 01-internal-beta-review</span>
+    </a>
+    <a class="card" href="./02-sourcing-flow/index.html">
+      <h3>选题到成稿</h3>
+      <p>五个节点的内容流转 · 现场标注</p>
+      <span class="meta">5 个节点 · 2 处投票 · 02-sourcing-flow</span>
+    </a>
+</div>
+</div>
+</body>
+</html>

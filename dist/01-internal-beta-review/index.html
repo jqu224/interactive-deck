@@ -1,0 +1,1737 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>内测复盘</title>
+<meta name="description" content="流程图式可交互评审 · 可编辑 · 可投票 · 可标注">
+<meta name="generator" content="flowdeck">
+<style data-flowdeck>/* flowdeck.css — 流程图式可交互演示引擎（共享样式，构建时内联进每个站点） */
+
+:root {
+  --fd-ink: #1b1b20;
+  --fd-muted: #6b6b76;
+  --fd-line: #e6e4dd;
+  --fd-paper: #fffdf8;
+  --fd-stage: #f5f3ed;
+  --fd-accent: #5b6cff;
+  --fd-accent-soft: #eceefe;
+  --fd-mint: #17b978;
+  --fd-coral: #ff6b4a;
+  --fd-amber: #e39b16;
+  --fd-radius: 16px;
+  --fd-shadow: 0 10px 30px rgba(28, 28, 40, .1), 0 2px 6px rgba(28, 28, 40, .05);
+  --fd-shadow-hi: 0 22px 64px rgba(28, 28, 40, .18), 0 3px 10px rgba(28, 28, 40, .07);
+  --fd-ease: cubic-bezier(.22, 1.28, .36, 1);
+  --fd-node-w: 900px;
+  --fd-node-h: 600px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--fd-stage);
+  color: var(--fd-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 舞台与世界 ---------- */
+
+.fd-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.fd-grid {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(28, 28, 40, .1) 1px, transparent 1px);
+  background-size: 34px 34px;
+  transition: background-position .8s cubic-bezier(.22, 1, .36, 1);
+}
+
+.fd-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  transition: transform 820ms var(--fd-ease);
+  will-change: transform;
+  --fd-scale: 1;
+  --fd-inv: 1;
+}
+
+.fd-edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.fd-edge {
+  fill: none;
+  stroke: #d5d2c8;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke .45s ease;
+}
+
+.fd-edge.is-branch { stroke-dasharray: 22 20; stroke: #e0ddd4; }
+.fd-edge.is-live { stroke: var(--fd-accent); stroke-dasharray: 34 26; animation: fd-dash 1.6s linear infinite; }
+
+.fd-lbl {
+  font-size: 26px;
+  fill: var(--fd-muted);
+  font-family: inherit;
+}
+
+.fd-lbl-bg { fill: var(--fd-stage); }
+
+@keyframes fd-dash { to { stroke-dashoffset: -60; } }
+
+/* ---------- 节点（一页） ---------- */
+
+.fd-node {
+  position: absolute;
+  width: var(--fd-node-w);
+  height: var(--fd-node-h);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 46px 56px 40px;
+  border-radius: 24px;
+  border: 1px solid var(--fd-line);
+  background: var(--fd-paper);
+  box-shadow: var(--fd-shadow);
+  opacity: .5;
+  transform: scale(.955);
+  transition: opacity .55s ease, transform .7s var(--fd-ease), box-shadow .5s ease, border-color .4s ease;
+  --fd-k: var(--fd-accent);
+}
+
+.fd-node.is-current {
+  opacity: 1;
+  transform: none;
+  box-shadow: var(--fd-shadow-hi);
+}
+
+.fd-kind-start { --fd-k: var(--fd-mint); }
+.fd-kind-decision { --fd-k: var(--fd-amber); }
+.fd-kind-end { --fd-k: var(--fd-coral); }
+
+.fd-node::before {
+  content: "";
+  position: absolute;
+  left: 56px;
+  right: 56px;
+  top: 0;
+  height: 5px;
+  border-radius: 0 0 6px 6px;
+  background: var(--fd-k);
+  opacity: .85;
+}
+
+.fd-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+}
+
+.fd-pill {
+  font-size: 16px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fd-k) 13%, #fff);
+  color: color-mix(in srgb, var(--fd-k) 82%, #000);
+}
+
+.fd-idx { font-size: 16px; color: var(--fd-muted); }
+
+.fd-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  font-size: 22px;
+  line-height: 1.66;
+  border-radius: 12px;
+  padding: 4px;
+  margin: -4px;
+  outline: 2px dashed transparent;
+  outline-offset: 10px;
+  transition: outline-color .25s ease, background .25s ease;
+}
+
+.fd-node.is-editing .fd-body {
+  outline-color: var(--fd-accent);
+  background: #fff;
+  cursor: text;
+}
+
+.fd-body > * { opacity: 0; transform: translateY(16px); }
+
+.fd-node.is-current .fd-body > * {
+  opacity: 1;
+  transform: none;
+  transition: opacity .5s ease, transform .62s var(--fd-ease);
+  transition-delay: calc(var(--i, 0) * 65ms + 130ms);
+}
+
+.fd-body h2 { font-size: 42px; line-height: 1.25; margin: 0 0 14px; font-weight: 500; letter-spacing: -.01em; }
+.fd-body h3 { font-size: 30px; margin: 18px 0 8px; font-weight: 500; }
+.fd-body p { margin: 0 0 14px; }
+.fd-body ul, .fd-body ol { margin: 0 0 14px; padding-left: 1.3em; }
+.fd-body li { margin: 6px 0; }
+.fd-body strong { font-weight: 500; color: color-mix(in srgb, var(--fd-accent) 70%, #000); }
+.fd-body em { font-style: normal; background: #fff3c4; padding: 0 4px; border-radius: 4px; }
+.fd-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .84em;
+  background: #f2f0ea;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+.fd-body img { max-width: 100%; border-radius: 12px; display: block; margin: 10px 0; }
+.fd-body svg { max-width: 100%; }
+.fd-body hr { border: none; border-top: 2px dashed var(--fd-line); margin: 18px 0; }
+.fd-body table { border-collapse: collapse; width: 100%; font-size: 19px; margin: 8px 0 16px; }
+.fd-body th, .fd-body td { border: 1px solid var(--fd-line); padding: 9px 12px; text-align: left; }
+.fd-body th { background: #f6f4ee; font-weight: 500; }
+
+.fd-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 16px;
+  color: var(--fd-muted);
+  min-height: 26px;
+}
+
+/* ---------- 投票 / 评分 ---------- */
+
+.fd-poll {
+  flex: none;
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  border-radius: var(--fd-radius);
+  padding: 16px 18px 14px;
+}
+
+.fd-poll-q { font-size: 20px; font-weight: 500; margin-bottom: 10px; }
+
+.fd-opt {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 7px 0;
+  font: inherit;
+  font-size: 19px;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color .25s ease;
+}
+
+.fd-opt:hover { border-color: var(--fd-accent); }
+.fd-opt.is-mine { border-color: var(--fd-accent); background: #fbfbff; }
+
+.fd-opt-b {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--fd-accent-soft);
+  transition: width .55s var(--fd-ease);
+}
+
+.fd-opt-t {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fd-opt-n { color: var(--fd-muted); font-variant-numeric: tabular-nums; }
+
+.fd-stars { display: flex; gap: 8px; margin: 6px 0 10px; }
+
+.fd-star {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--fd-muted);
+  transition: transform .2s var(--fd-ease), border-color .2s ease, color .2s ease;
+}
+
+.fd-star:hover { transform: translateY(-3px); }
+.fd-star.is-on { border-color: var(--fd-amber); color: var(--fd-amber); background: #fffaf0; }
+
+.fd-poll-meta { font-size: 16px; color: var(--fd-muted); }
+
+/* ---------- 标注钉 ---------- */
+
+.fd-pin {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--fd-coral);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 6;
+  box-shadow: 0 3px 10px rgba(255, 107, 74, .4);
+  transform: translate(-50%, -50%) scale(var(--fd-inv, 1));
+  transition: transform .25s var(--fd-ease);
+}
+
+.fd-pin:hover { transform: translate(-50%, -50%) scale(calc(var(--fd-inv, 1) * 1.18)); }
+
+body.fd-annotating .fd-node.is-current .fd-body { cursor: crosshair; }
+
+.fd-composer {
+  position: absolute;
+  z-index: 60;
+  width: 300px;
+  padding: 12px;
+  border-radius: var(--fd-radius);
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  box-shadow: var(--fd-shadow-hi);
+}
+
+.fd-composer textarea {
+  width: 100%;
+  height: 78px;
+  resize: none;
+  border: 1px solid var(--fd-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 15px;
+  color: inherit;
+  outline: none;
+}
+
+.fd-composer textarea:focus { border-color: var(--fd-accent); }
+
+.fd-composer-ft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.fd-who { font-size: 13px; color: var(--fd-muted); margin-right: auto; }
+
+/* ---------- 顶栏 ---------- */
+
+.fd-bar {
+  position: fixed;
+  left: 18px;
+  top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--fd-line);
+  background: rgba(255, 255, 255, .88);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--fd-shadow);
+  z-index: 40;
+  max-width: calc(100vw - 36px);
+}
+
+.fd-brand { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.fd-brand small { display: block; font-size: 12px; font-weight: 400; color: var(--fd-muted); }
+
+.fd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  color: inherit;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.fd-btn:hover { border-color: #c9c5b9; }
+.fd-btn.is-on { background: var(--fd-ink); border-color: var(--fd-ink); color: #fff; }
+.fd-btn.is-primary { background: var(--fd-accent); border-color: var(--fd-accent); color: #fff; }
+
+.fd-sep { width: 1px; height: 22px; background: var(--fd-line); flex: none; }
+
+/* ---------- 底部导航 ---------- */
+
+.fd-bottom {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 40;
+  max-width: calc(100vw - 36px);
+}
+
+.fd-editbar {
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--fd-line);
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--fd-shadow);
+}
+
+body.fd-editing .fd-editbar { display: flex; }
+
+.fd-dock {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--fd-line);
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--fd-shadow);
+}
+
+.fd-nav {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  color: var(--fd-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .25s ease, color .25s ease, transform .25s var(--fd-ease), border-color .25s ease;
+}
+
+.fd-nav:hover { transform: translateY(-2px); border-color: #c9c5b9; }
+
+.fd-nav-main {
+  width: 54px;
+  height: 54px;
+  background: var(--fd-ink);
+  border-color: var(--fd-ink);
+  color: #fff;
+}
+
+/* 呼吸感放在内部元素上：按钮自身的盒子保持稳定，点击不会因动画而"跑偏" */
+.fd-nav-main svg { animation: fd-bob 2.6s ease-in-out infinite; }
+
+.fd-nav-main:hover { background: var(--fd-accent); border-color: var(--fd-accent); }
+
+@keyframes fd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+.fd-dots { display: flex; align-items: center; gap: 7px; }
+
+.fd-dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #cfccc3;
+  cursor: pointer;
+  transition: all .35s var(--fd-ease);
+}
+
+.fd-dots button.is-on { width: 26px; background: var(--fd-ink); }
+.fd-dots button.has-note { background: var(--fd-coral); }
+.fd-dots button.is-cur.has-note { background: var(--fd-coral); }
+
+/* ---------- 小地图 ---------- */
+
+.fd-map {
+  position: fixed;
+  right: 18px;
+  top: 18px;
+  width: 268px;
+  padding: 10px 10px 6px;
+  border-radius: var(--fd-radius);
+  border: 1px solid var(--fd-line);
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--fd-shadow);
+  z-index: 40;
+}
+
+.fd-map-hd {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--fd-muted);
+  padding: 0 4px 6px;
+}
+
+.fd-map svg { display: block; width: 100%; height: auto; }
+
+.fd-mn { fill: #eeece5; stroke: #ddd9cd; stroke-width: 6; cursor: pointer; transition: fill .3s ease; }
+.fd-mn:hover { fill: #e2e0d6; }
+.fd-mn.is-cur { fill: var(--fd-accent); stroke: var(--fd-accent); }
+.fd-mn.is-done { fill: #dcdacf; }
+.fd-me { fill: none; stroke: #dedbd0; stroke-width: 8; }
+.fd-me.is-live { stroke: var(--fd-accent); stroke-width: 12; }
+.fd-mc { fill: none; stroke: var(--fd-ink); stroke-width: 8; stroke-dasharray: 20 14; opacity: .55; }
+.fd-md { fill: var(--fd-accent); }
+.fd-mp { fill: var(--fd-amber); }
+
+/* ---------- 侧栏 ---------- */
+
+.fd-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 344px;
+  max-width: 88vw;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--fd-line);
+  background: #fff;
+  box-shadow: -14px 0 40px rgba(28, 28, 40, .08);
+  transform: translateX(102%);
+  transition: transform .45s var(--fd-ease);
+  z-index: 50;
+}
+
+.fd-panel.is-open { transform: none; }
+
+.fd-panel-hd {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--fd-line);
+}
+
+.fd-live { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fd-muted); }
+.fd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fd-mint); }
+.fd-dot.is-idle { background: #cfccc3; }
+
+.fd-panel-bd { flex: 1; overflow: auto; padding: 14px 16px 28px; }
+
+.fd-panel h4 {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: .06em;
+  color: var(--fd-muted);
+  margin: 20px 0 8px;
+}
+
+.fd-panel h4:first-child { margin-top: 0; }
+
+.fd-name {
+  width: 100%;
+  border: 1px solid var(--fd-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.fd-name:focus { border-color: var(--fd-accent); }
+
+.fd-note {
+  border: 1px solid var(--fd-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.fd-note-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.fd-note-n {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--fd-coral);
+  color: #fff;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+}
+.fd-note-who { color: var(--fd-muted); font-size: 12px; margin-right: auto; }
+.fd-note-del { border: none; background: none; color: var(--fd-muted); cursor: pointer; font-size: 12px; padding: 0 2px; }
+.fd-note-del:hover { color: var(--fd-coral); }
+
+.fd-empty { color: var(--fd-muted); font-size: 13px; line-height: 1.7; padding: 2px 0 4px; }
+
+.fd-out { list-style: none; margin: 0; padding: 0; }
+
+.fd-out li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .2s ease;
+}
+
+.fd-out li:hover { background: #f7f5f0; }
+.fd-out li.is-cur { background: var(--fd-accent-soft); }
+.fd-out b { font-weight: 400; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-tag { font-size: 11px; color: var(--fd-muted); border: 1px solid var(--fd-line); border-radius: 999px; padding: 1px 7px; }
+.fd-tag.t-note { color: var(--fd-coral); border-color: #ffd9cf; }
+.fd-tag.t-poll { color: var(--fd-amber); border-color: #f6e2bb; }
+.fd-tag.t-dirty { color: var(--fd-accent); border-color: #d8dcff; }
+
+.fd-panel-ft {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--fd-line);
+}
+
+/* ---------- 提示 / 粒子 ---------- */
+
+.fd-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 108px;
+  transform: translate(-50%, 14px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--fd-ink);
+  color: #fff;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s ease, transform .4s var(--fd-ease);
+  z-index: 70;
+}
+
+.fd-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+.fd-burst { position: fixed; inset: 0; pointer-events: none; z-index: 35; }
+
+.fd-burst i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--fd-accent);
+  animation: fd-spark .72s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+
+@keyframes fd-spark {
+  from { transform: translate(-50%, -50%) scale(1); opacity: .95; }
+  to { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(.15); opacity: 0; }
+}
+
+.fd-hint {
+  position: fixed;
+  left: 18px;
+  bottom: 22px;
+  font-size: 12px;
+  color: var(--fd-muted);
+  z-index: 40;
+  line-height: 1.8;
+}
+
+.fd-hint kbd {
+  font: inherit;
+  border: 1px solid var(--fd-line);
+  background: #fff;
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+@media (max-width: 900px) {
+  .fd-map { display: none; }
+  .fd-hint { display: none; }
+  .fd-brand { max-width: 120px; }
+}
+
+/* 侧栏里的「流程」列表和小地图是同一份信息，侧栏展开时就让位 */
+body.fd-panel-open .fd-map { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fd-world, .fd-node, .fd-nav-main { transition-duration: 1ms; animation: none; }
+}
+</style>
+</head>
+<body>
+<script>window.__DECK__={"id":"01-internal-beta-review","title":"内测复盘","subtitle":"流程图式可交互评审 · 可编辑 · 可投票 · 可标注","start":"n1","order":["n1","n2","n3","n4","n5","n6"],"nodes":[{"id":"n1","label":"开场","kind":"start","x":0,"y":300,"html":"\u003ch2>内测复盘：把结论钉在流程上\u003c/h2>\u003cp>这一页是起点。用\u003cb>下一个\u003c/b>按钮沿着流程走一遍，右上角的小地图会一直告诉你走到了哪里。\u003c/p>\u003cul>\u003cli>每一页都可以直接改文字，插入图片、表格和图形\u003c/li>\u003cli>任何一页都能钉标注、发起投票和打分\u003c/li>\u003cli>同一份 deck 开多个窗口，改动会实时互通\u003c/li>\u003c/ul>"},{"id":"n2","label":"为什么现在做","kind":"step","x":1120,"y":0,"html":"\u003ch2>为什么是现在\u003c/h2>\u003cp>过去三周的数据指向同一件事：新用户在第一屏就流失了。\u003c/p>\u003ctable>\u003ctr>\u003cth>指标\u003c/th>\u003cth>内测前\u003c/th>\u003cth>内测后\u003c/th>\u003c/tr>\u003ctr>\u003ctd>首屏停留\u003c/td>\u003ctd>14 秒\u003c/td>\u003ctd>31 秒\u003c/td>\u003c/tr>\u003ctr>\u003ctd>次日回访\u003c/td>\u003ctd>22%\u003c/td>\u003ctd>38%\u003c/td>\u003c/tr>\u003ctr>\u003ctd>完成引导\u003c/td>\u003ctd>41%\u003c/td>\u003ctd>63%\u003c/td>\u003c/tr>\u003c/table>","poll":{"q":"你觉得现在最该补的是哪一块？","options":["首屏信息密度","引导步骤太多","示例内容太少","加载速度"]}},{"id":"n3","label":"三个候选","kind":"step","x":1120,"y":760,"html":"\u003ch2>三个候选方案\u003c/h2>\u003cul>\u003cli>\u003cb>方案 A\u003c/b>：把首屏缩成一页，其余下沉成流程\u003c/li>\u003cli>\u003cb>方案 B\u003c/b>：保留结构，只重做引导动效\u003c/li>\u003cli>\u003cb>方案 C\u003c/b>：先做数据面板，把决策权交给用户\u003c/li>\u003c/ul>\u003cp>三个方案的成本差在三倍以内，关键差别是\u003cb>改动半径\u003c/b>。\u003c/p>"},{"id":"n4","label":"选哪个","kind":"decision","x":2240,"y":380,"html":"\u003ch2>这一步需要你表态\u003c/h2>\u003cp>先看左边的数据，再给这一轮方案打个分。评分会实时汇总，不需要任何人举手。\u003c/p>","poll":{"type":"rating","q":"当前方案的完成度，你打几分？"}},{"id":"n5","label":"接下来两周","kind":"step","x":3360,"y":0,"html":"\u003ch2>接下来两周\u003c/h2>\u003cul>\u003cli>第 1-3 天：把首屏拆成 5 个可跳转节点，跑通流程骨架\u003c/li>\u003cli>第 4-7 天：接上投票与标注，灰度给 20 个用户\u003c/li>\u003cli>第 8-14 天：按标注里的高频问题逐条回填\u003c/li>\u003c/ul>\u003cp>验收标准只有一个：\u003cem>用户能在 90 秒内自己走完整个流程\u003c/em>。\u003c/p>"},{"id":"n6","label":"收尾","kind":"end","x":3360,"y":760,"html":"\u003ch2>把这份 deck 变成你的\u003c/h2>\u003cp>点「导出单文件」，当前所有改动会打包成一个自包含 HTML，可以直接丢到任何静态托管上。\u003c/p>\u003cp>要批量做很多份，就改 \u003ccode>decks/\u003c/code> 下的 JSON 再跑一次构建——一份规格，一个站点。\u003c/p>\u003chr>\u003cp>\u003cb>现在按 E 改一句话试试。\u003c/b>\u003c/p>"}],"edges":[{"from":"n1","to":"n2"},{"from":"n2","to":"n3"},{"from":"n3","to":"n4"},{"from":"n4","to":"n5","label":"通过"},{"from":"n5","to":"n6"},{"from":"n2","to":"n6","label":"只要结论"}]};</script>
+<script data-flowdeck>/* flowdeck.js — 流程图式可交互演示引擎
+ * 一个规格（JSON）→ 一个自包含 HTML 站点。
+ * 能力：整页变形相机 / 流程小地图 / 就地编辑 / 标注钉 / 投票评分 / 房间同步
+ */
+(function () {
+  'use strict';
+
+  /* ============ 小工具 ============ */
+
+  var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+  var uid = function (n) { return Math.random().toString(36).slice(2, 2 + (n || 8)); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  };
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var debounce = function (fn, ms) {
+    var t;
+    return function () {
+      var a = arguments, self = this;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(self, a); }, ms);
+    };
+  };
+
+  var NW = 900, NH = 600, PAD = 140;   // 节点尺寸与画布留白
+  var KIND_LABEL = { start: '起点', step: '步骤', decision: '抉择', end: '收尾' };
+
+  /* 自查：必须在改写 body 之前把自身资源抓下来，否则导出单文件取不到 CSS/JS */
+  var ASSETS = {
+    css: (function () { var e = document.querySelector('style[data-flowdeck]'); return e ? e.textContent : ''; })(),
+    js: (function () { var e = document.querySelector('script[data-flowdeck]'); return e ? e.textContent : ''; })()
+  };
+
+  /* ============ 文档模型 ============ */
+
+  var M = { spec: null, nodes: [], byId: {}, edges: [], order: [], idx: 0, W: 0, H: 0, mode: null };
+  var cam = { tx: 0, ty: 0, scale: 1, x: 0, y: 0, w: 0, h: 0 };
+  var deckId = 'deck';
+
+  /* ============ 本地可写状态（编辑内容 / 标注 / 投票） ============ */
+
+  var S = { html: {}, notes: {}, polls: {}, dirty: {}, name: '' };
+  var LSKEY = function () { return 'flowdeck:v1:' + deckId; };
+
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(LSKEY());
+      if (raw) {
+        var o = JSON.parse(raw);
+        S.html = o.html || {}; S.notes = o.notes || {}; S.polls = o.polls || {}; S.dirty = o.dirty || {};
+        S.name = o.name || '';
+      }
+    } catch (e) { /* 忽略损坏的本地数据 */ }
+  }
+
+  var saveLocal = debounce(function () {
+    try { localStorage.setItem(LSKEY(), JSON.stringify(S)); } catch (e) { }
+  }, 240);
+
+  /* ============ 房间同步层 ============ */
+  /* 同一套消息协议两种承载：BroadcastChannel（本地多标签/多窗口）
+     或 WebSocket（把 join 换成 new WebSocket，消息收发完全一致）。 */
+
+  var Trace = {
+    cid: (function () {
+      try {
+        var v = sessionStorage.getItem('fd:cid');
+        if (!v) { v = uid(8); sessionStorage.setItem('fd:cid', v); }
+        return v;
+      } catch (e) { return uid(8); }
+    })(),
+    ch: null, busKey: null, seen: {}, peers: {}, timer: null, onMsg: null, onPeers: null,
+
+    join: function (room, onMsg, onPeers) {
+      var self = this;
+      this.onMsg = onMsg; this.onPeers = onPeers;
+      if (typeof BroadcastChannel === 'function') {
+        this.ch = new BroadcastChannel('flowdeck:' + room);
+        this.ch.onmessage = function (e) { self.recv(e.data); };
+      } else {
+        this.busKey = 'flowdeck:bus:' + room;
+        window.addEventListener('storage', function (e) {
+          if (e.key === self.busKey && e.newValue) {
+            try { self.recv(JSON.parse(e.newValue)); } catch (err) { }
+          }
+        });
+      }
+      this.post({ t: 'hello', id: this.cid, name: S.name });
+      this.timer = setInterval(function () {
+        self.post({ t: 'hello', id: self.cid, name: S.name });
+        self.prune();
+      }, 3500);
+      this.prune();
+    },
+
+    post: function (m) {
+      m._n = uid(12);
+      if (this.ch) this.ch.postMessage(m);
+      else if (this.busKey) { try { localStorage.setItem(this.busKey, JSON.stringify(m)); } catch (e) { } }
+    },
+
+    pub: function (m) { this.post(m); this.recv(m); },
+
+    recv: function (m) {
+      if (!m || !m._n || this.seen[m._n]) return;
+      this.seen[m._n] = 1;
+      if (Object.keys(this.seen).length > 600) this.seen = {};
+      if (m.t === 'hello') {
+        var fresh = !this.peers[m.id];
+        this.peers[m.id] = Date.now();
+        if (m.id !== this.cid && fresh) this.post({ t: 'here', id: this.cid, name: S.name });
+        if (this.onPeers) this.onPeers();
+      } else if (m.t === 'here') {
+        this.peers[m.id] = Date.now();
+        if (this.onPeers) this.onPeers();
+      } else if (m.cid !== this.cid) {
+        if (this.onMsg) this.onMsg(m);
+      }
+    },
+
+    prune: function () {
+      var now = Date.now(), self = this;
+      Object.keys(this.peers).forEach(function (id) {
+        if (now - self.peers[id] > 12000) delete self.peers[id];
+      });
+      this.peers[this.cid] = now;
+      if (this.onPeers) this.onPeers();
+    },
+
+    count: function () { return Object.keys(this.peers).length; }
+  };
+
+  /* ============ 规格归一化 ============ */
+
+  function normalize(spec) {
+    var nodes = (spec.nodes || []).slice();
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(function (n) {
+      minX = Math.min(minX, n.x || 0); minY = Math.min(minY, n.y || 0);
+      maxX = Math.max(maxX, (n.x || 0) + NW); maxY = Math.max(maxY, (n.y || 0) + NH);
+    });
+    if (!isFinite(minX)) { minX = minY = 0; maxX = NW; maxY = NH; }
+
+    M.nodes = nodes.map(function (n, i) {
+      var o = {};
+      for (var k in n) if (Object.prototype.hasOwnProperty.call(n, k)) o[k] = n[k];
+      o.x = (n.x || 0) - minX + PAD;
+      o.y = (n.y || 0) - minY + PAD;
+      o.i = i;
+      if (!o.id) o.id = 'n' + (i + 1);
+      return o;
+    });
+
+    M.byId = {};
+    M.nodes.forEach(function (n) { M.byId[n.id] = n; });
+    M.W = maxX - minX + PAD * 2;
+    M.H = maxY - minY + PAD * 2;
+    M.edges = (spec.edges || []).filter(function (e) { return M.byId[e.from] && M.byId[e.to]; });
+
+    var ids = M.nodes.map(function (n) { return n.id; });
+    if (spec.order && spec.order.length) {
+      M.order = spec.order.filter(function (id) { return M.byId[id]; });
+      ids.forEach(function (id) { if (M.order.indexOf(id) < 0) M.order.push(id); });
+    } else {
+      M.order = deriveOrder(spec, ids);
+    }
+  }
+
+  function deriveOrder(spec, ids) {
+    var incoming = {};
+    (spec.edges || []).forEach(function (e) { incoming[e.to] = 1; });
+    var start = (spec.start && ids.indexOf(spec.start) >= 0) ? spec.start : null;
+    if (!start) {
+      for (var i = 0; i < ids.length; i++) { if (!incoming[ids[i]]) { start = ids[i]; break; } }
+    }
+    start = start || ids[0];
+    var out = [], seen = {};
+    (function walk(id) {
+      if (!id || seen[id] || ids.indexOf(id) < 0) return;
+      seen[id] = 1; out.push(id);
+      (spec.edges || []).forEach(function (e) { if (e.from === id) walk(e.to); });
+    })(start);
+    ids.forEach(function (id) { if (!seen[id]) out.push(id); });
+    return out;
+  }
+
+  var cur = function () { return M.byId[M.order[M.idx]]; };
+  var nextOf = function (id) { var i = M.order.indexOf(id); return i >= 0 ? M.byId[M.order[i + 1]] : null; };
+  var isMainEdge = function (e) { return M.order.indexOf(e.to) - M.order.indexOf(e.from) === 1; };
+
+  /* ============ 外壳 ============ */
+
+  var ICON = {
+    left: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    right: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    pen: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16v4z"/></svg>',
+    note: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/></svg>',
+    users: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="9" cy="8" r="3"/><path d="M22 20v-1a4 4 0 0 0-3-3.9"/></svg>',
+    down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0l-5-5m5 5l5-5"/><path d="M4 20h16"/></svg>'
+  };
+
+  function buildShell() {
+    document.body.innerHTML =
+      '<div class="fd-stage" id="fd-stage">' +
+        '<div class="fd-grid" id="fd-grid"></div>' +
+        '<div class="fd-world" id="fd-world">' +
+          '<svg class="fd-edges" id="fd-edges"></svg>' +
+        '</div>' +
+        '<div class="fd-burst" id="fd-burst"></div>' +
+      '</div>' +
+      '<header class="fd-bar">' +
+        '<div class="fd-brand">' + esc(M.spec.title || 'Flow Deck') + '<small>' + esc(M.spec.subtitle || '流程图式可交互演示') + '</small></div>' +
+        '<div class="fd-sep"></div>' +
+        '<button class="fd-btn" id="fd-m-edit">' + ICON.pen + '就地编辑</button>' +
+        '<button class="fd-btn" id="fd-m-note">' + ICON.note + '标注</button>' +
+        '<button class="fd-btn" id="fd-m-users">' + ICON.users + '<span id="fd-users">1 人在线</span></button>' +
+        '<button class="fd-btn" id="fd-export">' + ICON.down + '导出单文件</button>' +
+      '</header>' +
+      '<div class="fd-map" id="fd-map">' +
+        '<div class="fd-map-hd"><span>流程总览</span><span id="fd-map-pos"></span></div>' +
+        '<svg id="fd-map-svg" xmlns="http://www.w3.org/2000/svg"></svg>' +
+      '</div>' +
+      '<div class="fd-bottom">' +
+        '<div class="fd-editbar" id="fd-editbar"></div>' +
+        '<div class="fd-dock">' +
+          '<button class="fd-nav" id="fd-prev" title="上一个">' + ICON.left + '</button>' +
+          '<div class="fd-dots" id="fd-dots"></div>' +
+          '<button class="fd-nav fd-nav-main" id="fd-next" title="下一个">' + ICON.right + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<aside class="fd-panel" id="fd-panel">' +
+        '<div class="fd-panel-hd">' +
+          '<div class="fd-live"><span class="fd-dot" id="fd-dot"></span><span id="fd-people">1 人在线</span></div>' +
+          '<div style="margin-left:auto"><button class="fd-btn" id="fd-panel-close">收起</button></div>' +
+        '</div>' +
+        '<div class="fd-panel-bd" id="fd-panel-bd"></div>' +
+        '<div class="fd-panel-ft">' +
+          '<button class="fd-btn" id="fd-reset-page">清空本页数据</button>' +
+          '<button class="fd-btn" id="fd-reset-all">全部重置</button>' +
+        '</div>' +
+      '</aside>' +
+      '<div class="fd-hint"><kbd>→</kbd> 下一个 · <kbd>←</kbd> 上一个 · <kbd>E</kbd> 编辑 · <kbd>A</kbd> 标注 · 点小地图跳转</div>' +
+      '<div class="fd-toast" id="fd-toast"></div>';
+
+    var bar = $('.fd-bar');
+    $$('.fd-btn', bar).forEach(function (b) { b.style.flex = 'none'; });
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('#fd-toast');
+    t.textContent = msg;
+    t.classList.add('is-on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('is-on'); }, 2100);
+  }
+
+  /* ============ 节点与连线 ============ */
+
+  function bodyHTML(n) { return S.html[n.id] != null ? S.html[n.id] : (n.html || ''); }
+
+  function buildNodes() {
+    var world = $('#fd-world');
+    M.nodes.forEach(function (n) {
+      var d = document.createElement('div');
+      d.className = 'fd-node fd-kind-' + (n.kind || 'step');
+      d.id = 'fd-n-' + n.id;
+      d.dataset.id = n.id;
+      d.style.left = n.x + 'px';
+      d.style.top = n.y + 'px';
+      d.innerHTML =
+        '<div class="fd-head">' +
+          '<span class="fd-pill">' + esc(KIND_LABEL[n.kind] || '步骤') + '</span>' +
+          '<span class="fd-idx">' + (M.order.indexOf(n.id) + 1) + ' / ' + M.order.length + '</span>' +
+        '</div>' +
+        '<div class="fd-body" data-body>' + bodyHTML(n) + '</div>' +
+        (n.poll ? '<div class="fd-poll" data-poll contenteditable="false"></div>' : '') +
+        '<div class="fd-foot" data-foot></div>';
+      world.appendChild(d);
+
+      if (n.poll) {
+        var spec = n.poll;
+        if (spec.type === 'rating') {
+          if (!S.polls[n.id]) S.polls[n.id] = { raters: {} };
+          if (!S.polls[n.id].raters) S.polls[n.id].raters = {};
+        } else {
+          if (!S.polls[n.id]) S.polls[n.id] = { voters: {} };
+          if (!S.polls[n.id].voters) S.polls[n.id].voters = {};
+        }
+      }
+      stagger(d);
+    });
+    renderEdges();
+  }
+
+  function stagger(node) {
+    var kids = $$('[data-body] > *', node);
+    kids.forEach(function (k, i) { k.style.setProperty('--i', i); });
+    return kids.length;
+  }
+
+  function anchorOf(n, dx, dy) {
+    var cx = n.x + NW / 2, cy = n.y + NH / 2, m = 40;
+    if (Math.abs(dx) >= Math.abs(dy)) return { x: dx > 0 ? n.x + NW + m : n.x - m, y: cy };
+    return { x: cx, y: dy > 0 ? n.y + NH + m : n.y - m };
+  }
+
+  function edgePath(a, b) {
+    var dx = (b.x + NW / 2) - (a.x + NW / 2);
+    var dy = (b.y + NH / 2) - (a.y + NH / 2);
+    var p1 = anchorOf(a, dx, dy), p2 = anchorOf(b, dx, dy);
+    var horiz = Math.abs(dx) >= Math.abs(dy);
+    var c1 = horiz ? { x: (p1.x + p2.x) / 2, y: p1.y } : { x: p1.x, y: (p1.y + p2.y) / 2 };
+    var c2 = horiz ? { x: (p1.x + p2.x) / 2, y: p2.y } : { x: p2.x, y: (p1.y + p2.y) / 2 };
+    return 'M' + p1.x + ' ' + p1.y + 'C' + c1.x + ' ' + c1.y + ' ' + c2.x + ' ' + c2.y + ' ' + p2.x + ' ' + p2.y;
+  }
+
+  function renderEdges() {
+    var svg = $('#fd-edges');
+    svg.setAttribute('viewBox', '0 0 ' + M.W + ' ' + M.H);
+    var n = cur();
+    var out = '<defs><marker id="fd-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#c9c6bb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
+
+    M.edges.forEach(function (e) {
+      var a = M.byId[e.from], b = M.byId[e.to];
+      var cls = 'fd-edge' + (isMainEdge(e) ? '' : ' is-branch');
+      if (n && e.to === n.id) cls += ' is-live';
+      out += '<path class="' + cls + '" d="' + edgePath(a, b) + '" marker-end="url(#fd-arrow)"/>';
+      if (e.label) {
+        var mx = (a.x + b.x) / 2 + NW / 2, my = (a.y + b.y) / 2 + NH / 2;
+        var w = String(e.label).length * 26 + 24;
+        out += '<rect class="fd-lbl-bg" x="' + (mx - w / 2) + '" y="' + (my - 22) + '" width="' + w + '" height="44" rx="12"/>';
+        out += '<text class="fd-lbl" x="' + mx + '" y="' + my + '" text-anchor="middle" dominant-baseline="central">' + esc(e.label) + '</text>';
+      }
+    });
+    svg.innerHTML = out;
+  }
+
+  /* ============ 相机 ============ */
+
+  function applyCam(animate) {
+    var stage = $('#fd-stage'), world = $('#fd-world'), grid = $('#fd-grid');
+    var vw = stage.clientWidth, vh = stage.clientHeight;
+    var n = cur();
+    var pad = vw < 1000 ? 56 : 150;
+    var scale = clamp(Math.min((vw - pad * 2) / NW, (vh - pad * 2) / NH), 0.2, 1);
+    var nx = nextOf(n.id);
+    var k = nx ? 0.13 : 0;   // 相机朝下一个节点偏一点，方向感就出来了
+    var cx = n.x + NW / 2 + (nx ? (nx.x - n.x) * k : 0);
+    var cy = n.y + NH / 2 + (nx ? (nx.y - n.y) * k : 0);
+
+    cam.scale = scale;
+    cam.tx = vw / 2 - cx * scale;
+    cam.ty = vh / 2 - cy * scale;
+
+    if (!animate) world.style.transition = 'none';
+    world.style.transform = 'translate(' + cam.tx + 'px,' + cam.ty + 'px) scale(' + scale + ')';
+    if (!animate) { void world.offsetWidth; world.style.transition = ''; }
+
+    world.style.setProperty('--fd-scale', scale);
+    world.style.setProperty('--fd-inv', 1 / scale);
+    grid.style.backgroundPosition = (cam.tx * 0.3) + 'px ' + (cam.ty * 0.3) + 'px';
+
+    cam.x = -cam.tx / scale; cam.y = -cam.ty / scale;
+    cam.w = vw / scale; cam.h = vh / scale;
+  }
+
+  /* ============ 跳转 ============ */
+
+  function goto(i, noPush) {
+    i = clamp(i, 0, M.order.length - 1);
+    M.idx = i;
+    var n = cur();
+
+    $$('.fd-node').forEach(function (d) {
+      d.classList.toggle('is-current', d.dataset.id === n.id);
+    });
+    applyCam(true);
+    stagger($('#fd-n-' + n.id));
+    renderEdges();
+    renderMap();
+    renderPoll(n.id);
+    renderNotes();
+    renderOutline();
+    renderDots();
+    burst();
+    if (!noPush && location.hash !== '#' + n.id) {
+      try { history.replaceState(null, '', '#' + n.id); } catch (e) { }
+    }
+  }
+
+  function burst() {
+    var host = $('#fd-burst');
+    var n = cur();
+    var sx = cam.tx + (n.x + NW / 2) * cam.scale;
+    var sy = cam.ty + (n.y + NH / 2) * cam.scale;
+    host.innerHTML = '';
+    var colors = ['#5b6cff', '#ff6b4a', '#17b978', '#e39b16'];
+    for (var i = 0; i < 12; i++) {
+      var d = document.createElement('i');
+      var a = (i / 12) * Math.PI * 2 + Math.random() * 0.5;
+      var r = 70 + Math.random() * 110;
+      d.style.left = sx + 'px';
+      d.style.top = sy + 'px';
+      d.style.background = colors[i % colors.length];
+      d.style.setProperty('--tx', Math.cos(a) * r + 'px');
+      d.style.setProperty('--ty', Math.sin(a) * r + 'px');
+      d.style.animationDelay = (i * 16) + 'ms';
+      host.appendChild(d);
+    }
+    setTimeout(function () { host.innerHTML = ''; }, 900);
+  }
+
+  /* ============ 小地图 ============ */
+
+  function renderMap() {
+    var svg = $('#fd-map-svg');
+    svg.setAttribute('viewBox', '0 0 ' + M.W + ' ' + M.H);
+    var n = cur();
+    var done = {};
+    M.order.slice(0, M.idx).forEach(function (id) { done[id] = 1; });
+    var out = '';
+    M.edges.forEach(function (e) {
+      var a = M.byId[e.from], b = M.byId[e.to];
+      var live = (e.to === n.id) ? ' is-live' : '';
+      out += '<path class="fd-me' + live + '" d="' + edgePath(a, b) + '"/>';
+    });
+    M.nodes.forEach(function (m) {
+      var cls = 'fd-mn' + (m.id === n.id ? ' is-cur' : (done[m.id] ? ' is-done' : ''));
+      out += '<rect class="' + cls + '" data-id="' + esc(m.id) + '" x="' + m.x + '" y="' + m.y + '" width="' + NW + '" height="' + NH + '" rx="48"/>';
+      if (m.poll) out += '<circle class="fd-mp" cx="' + (m.x + 70) + '" cy="' + (m.y + 70) + '" r="34"/>';
+      if (S.dirty[m.id]) out += '<circle class="fd-md" cx="' + (m.x + NW - 70) + '" cy="' + (m.y + 70) + '" r="34"/>';
+    });
+    out += '<rect class="fd-mc" x="' + cam.x + '" y="' + cam.y + '" width="' + cam.w + '" height="' + cam.h + '" rx="40"/>';
+    svg.innerHTML = out;
+    $('#fd-map-pos').textContent = (M.idx + 1) + ' / ' + M.order.length;
+  }
+
+  /* ============ 投票 / 评分 ============ */
+
+  /* 中位数：平均数会被极端值拽跑，中位数才反映真实水位 */
+  function median(nums) {
+    if (!nums || !nums.length) return null;
+    var a = nums.slice().sort(function (x, y) { return x - y; });
+    var m = a.length >> 1;
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  }
+  var numTxt = function (v) { return v == null ? '—' : (v % 1 === 0 ? String(v) : v.toFixed(1)); };
+
+  function pollData(n) {
+    if (!S.polls[n.id]) S.polls[n.id] = n.poll.type === 'rating' ? { raters: {} } : { voters: {} };
+    return S.polls[n.id];
+  }
+
+  function renderPoll(id) {
+    var n = M.byId[id];
+    if (!n || !n.poll) return;
+    var host = document.querySelector('#fd-n-' + id + ' [data-poll]');
+    if (!host) return;
+
+    var spec = n.poll, st = pollData(n), html = '';
+
+    if (spec.type === 'rating') {
+      var vals = Object.keys(st.raters).map(function (k) { return st.raters[k]; });
+      var sum = vals.reduce(function (a, b) { return a + b; }, 0);
+      var avg = vals.length ? (sum / vals.length) : 0;
+      var mine = st.raters[Trace.cid] || 0;
+      html += '<div class="fd-poll-q">' + esc(spec.q || '打个分') + '</div><div class="fd-stars">';
+      for (var s = 1; s <= 5; s++) {
+        html += '<button class="fd-star' + (mine >= s ? ' is-on' : '') + '" data-vote="' + s + '">' + s + '</button>';
+      }
+      var md = median(vals);
+      html += '</div><div class="fd-poll-meta">' + vals.length + ' 人评分 · 平均 ' + (vals.length ? avg.toFixed(1) : '—') +
+        ' · 中位数 ' + numTxt(md) + ' 分' + (mine ? ' · 你给了 ' + mine + ' 分' : '') + '</div>';
+    } else {
+      var opts = spec.options || [];
+      var counts = opts.map(function (o, i) { return Object.keys(st.voters).filter(function (k) { return st.voters[k] === i; }).length; });
+      var total = counts.reduce(function (a, b) { return a + b; }, 0);
+      var myPick = st.voters[Trace.cid];
+      html += '<div class="fd-poll-q">' + esc(spec.q || '选一个') + '</div>';
+      opts.forEach(function (o, i) {
+        var pct = total ? Math.round(counts[i] / total * 100) : 0;
+        html += '<button class="fd-opt' + (myPick === i ? ' is-mine' : '') + '" data-vote="' + i + '">' +
+          '<span class="fd-opt-b" style="width:' + pct + '%"></span>' +
+          '<span class="fd-opt-t"><span>' + esc(o) + '</span><span class="fd-opt-n">' + pct + '% · ' + counts[i] + '</span></span>' +
+          '</button>';
+      });
+      html += '<div class="fd-poll-meta">' + total + ' 人已投' + (myPick != null ? ' · 你选了「' + esc(opts[myPick]) + '」' : '') + '</div>';
+    }
+    host.innerHTML = html;
+  }
+
+  function vote(id, value) {
+    var n = M.byId[id];
+    if (!n || !n.poll) return;
+    var st = pollData(n);
+    if (n.poll.type === 'rating') st.raters[Trace.cid] = value;
+    else st.voters[Trace.cid] = value;
+    saveLocal();
+    renderPoll(id);
+    Trace.pub({ t: 'vote', cid: Trace.cid, nodeId: id, value: value });
+  }
+
+  /* ============ 标注钉 ============ */
+
+  function noteList(id) { return S.notes[id] || []; }
+
+  function renderPins(id) {
+    var node = $('#fd-n-' + id);
+    if (!node) return;
+    $$('.fd-pin', node).forEach(function (p) { p.remove(); });
+    noteList(id).forEach(function (note, i) {
+      var b = document.createElement('button');
+      b.className = 'fd-pin';
+      b.textContent = i + 1;
+      b.style.left = (note.x * 100) + '%';
+      b.style.top = (note.y * 100) + '%';
+      b.title = note.who + '：' + note.text;
+      b.dataset.note = note.id;
+      node.appendChild(b);
+    });
+  }
+
+  var composer = null;
+
+  function openComposer(clientX, clientY, id) {
+    closeComposer();
+    var stage = $('#fd-stage');
+    var stageRect = stage.getBoundingClientRect();
+    var node = $('#fd-n-' + id);
+    var nr = node.getBoundingClientRect();
+    var rx = clamp((clientX - nr.left) / nr.width, 0, 1);
+    var ry = clamp((clientY - nr.top) / nr.height, 0, 1);
+
+    composer = document.createElement('div');
+    composer.className = 'fd-composer';
+    composer.innerHTML =
+      '<textarea placeholder="在这一点上写点什么…"></textarea>' +
+      '<div class="fd-composer-ft"><span class="fd-who">' + esc(S.name || '访客') + '</span>' +
+      '<button class="fd-btn" data-act="cancel">取消</button>' +
+      '<button class="fd-btn is-primary" data-act="save">钉上</button></div>';
+    document.body.appendChild(composer);
+
+    var w = 300, h = composer.offsetHeight || 150;
+    var left = clamp(clientX - stageRect.left - w / 2, 12, window.innerWidth - w - 12);
+    var top = clamp(clientY - stageRect.top + 14, 70, window.innerHeight - h - 90);
+    composer.style.left = left + 'px';
+    composer.style.top = top + 'px';
+
+    var ta = $('textarea', composer);
+    ta.focus();
+
+    composer.addEventListener('click', function (e) {
+      var act = e.target.getAttribute && e.target.getAttribute('data-act');
+      if (act === 'cancel') { closeComposer(); return; }
+      if (act === 'save') {
+        var text = ta.value.trim();
+        if (!text) { closeComposer(); return; }
+        var note = { id: uid(8), x: rx, y: ry, text: text, who: S.name || '访客', cid: Trace.cid, ts: Date.now() };
+        if (!S.notes[id]) S.notes[id] = [];
+        S.notes[id].push(note);
+        saveLocal();
+        renderPins(id); renderNotes(); renderDots(); renderOutline();
+        Trace.pub({ t: 'note:add', cid: Trace.cid, nodeId: id, note: note });
+        closeComposer();
+        toast('已钉上第 ' + S.notes[id].length + ' 条标注');
+      }
+    });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('[data-act="save"]', composer).click();
+      if (e.key === 'Escape') closeComposer();
+    });
+
+    function onDocDown(e) { if (composer && !composer.contains(e.target)) closeComposer(); }
+    setTimeout(function () { document.addEventListener('mousedown', onDocDown); }, 0);
+    composer._off = function () { document.removeEventListener('mousedown', onDocDown); };
+  }
+
+  function closeComposer() {
+    if (!composer) return;
+    if (composer._off) composer._off();
+    composer.remove();
+    composer = null;
+  }
+
+  function removeNote(id, noteId) {
+    S.notes[id] = noteList(id).filter(function (n) { return n.id !== noteId; });
+    saveLocal();
+    renderPins(id); renderNotes(); renderDots(); renderOutline();
+    Trace.pub({ t: 'note:del', cid: Trace.cid, nodeId: id, noteId: noteId });
+  }
+
+  /* ============ 侧栏 ============ */
+
+  function renderNotes() {
+    var n = cur(), host = $('#fd-notes');
+    if (!host) return;
+    var list = noteList(n.id);
+    $('#fd-note-count').textContent = list.length;
+    if (!list.length) {
+      host.innerHTML = '<div class="fd-empty">本页还没有标注。打开「标注」后，点页面上任意位置就能钉一条意见。</div>';
+      return;
+    }
+    host.innerHTML = list.map(function (x, i) {
+      return '<div class="fd-note"><div class="fd-note-hd"><span class="fd-note-n">' + (i + 1) + '</span>' +
+        '<span class="fd-note-who">' + esc(x.who) + '</span>' +
+        (x.cid === Trace.cid ? '<button class="fd-note-del" data-del="' + esc(x.id) + '">删除</button>' : '') +
+        '</div>' + esc(x.text) + '</div>';
+    }).join('');
+  }
+
+  function renderOutline() {
+    var host = $('#fd-out');
+    if (!host) return;
+    host.innerHTML = M.order.map(function (id, i) {
+      var m = M.byId[id];
+      var tags = '';
+      if (m.poll) tags += '<span class="fd-tag t-poll">投票</span>';
+      if (noteList(id).length) tags += '<span class="fd-tag t-note">' + noteList(id).length + '</span>';
+      if (S.dirty[id]) tags += '<span class="fd-tag t-dirty">改</span>';
+      return '<li data-i="' + i + '" class="' + (i === M.idx ? 'is-cur' : '') + '"><b>' + esc(m.label || m.id) + '</b>' + tags + '</li>';
+    }).join('');
+  }
+
+  function renderPanel() {
+    var host = $('#fd-panel-bd');
+    if (!host) return;
+    host.innerHTML =
+      '<h4>你是</h4>' +
+      '<input class="fd-name" id="fd-name" placeholder="填个名字，标注和投票会带上" value="' + esc(S.name) + '">' +
+      '<h4>本页标注 <span id="fd-note-count">0</span></h4>' +
+      '<div id="fd-notes"></div>' +
+      '<h4>流程</h4>' +
+      '<ol class="fd-out" id="fd-out"></ol>';
+    renderNotes();
+    renderOutline();
+    var input = $('#fd-name');
+    input.addEventListener('input', function () {
+      S.name = input.value.trim();
+      try { localStorage.setItem('flowdeck:name', S.name); } catch (e) { }
+      saveLocal();
+      Trace.pub({ t: 'here', cid: Trace.cid, name: S.name });
+    });
+    host.addEventListener('click', function (e) {
+      var li = e.target.closest ? e.target.closest('#fd-out li') : null;
+      if (li) { goto(parseInt(li.dataset.i, 10)); return; }
+      var del = e.target.getAttribute && e.target.getAttribute('data-del');
+      if (del) removeNote(cur().id, del);
+    });
+  }
+
+  function renderDots() {
+    var host = $('#fd-dots');
+    if (!host) return;
+    host.innerHTML = M.order.map(function (id, i) {
+      var cls = (i === M.idx ? 'is-on is-cur' : '') + (noteList(id).length ? ' has-note' : '');
+      return '<button class="' + cls + '" data-i="' + i + '" title="' + esc(M.byId[id].label || id) + '"></button>';
+    }).join('');
+  }
+
+  function renderPeople() {
+    var c = Trace.count();
+    var label = c + ' 人在线';
+    $('#fd-people').textContent = label;
+    $('#fd-users').textContent = label;
+    $('#fd-dot').className = 'fd-dot' + (c > 1 ? '' : ' is-idle');
+  }
+
+  /* ============ 就地编辑 ============ */
+
+  var EDIT_TOOLS = [
+    { act: 'h2', label: '大标题' },
+    { act: 'p', label: '正文' },
+    { act: 'bold', label: '加粗' },
+    { act: 'ul', label: '列表' },
+    { act: 'table', label: '表格' },
+    { act: 'image', label: '图片' },
+    { act: 'shape', label: '图形' },
+    { act: 'hr', label: '分隔' },
+    { act: 'undo', label: '撤销' },
+    { act: 'done', label: '完成' }
+  ];
+
+  var SHAPES = [
+    '<svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="46" fill="#eceefe" stroke="#5b6cff" stroke-width="3"/><path d="M40 62l14 14 26-30" fill="none" stroke="#5b6cff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    '<svg width="220" height="60" viewBox="0 0 220 60"><rect x="2" y="10" width="140" height="40" rx="10" fill="#eceefe" stroke="#5b6cff" stroke-width="3"/><path d="M150 30h48m0 0l-14-12m14 12l-14 12" fill="none" stroke="#5b6cff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    '<svg width="120" height="120" viewBox="0 0 120 120"><path d="M60 12l15 30 33 5-24 23 6 33-30-16-30 16 6-33-24-23 33-5z" fill="#fff3c4" stroke="#e39b16" stroke-width="3" stroke-linejoin="round"/></svg>'
+  ];
+  var shapeI = 0;
+
+  function buildEditBar() {
+    var bar = $('#fd-editbar');
+    bar.innerHTML = EDIT_TOOLS.map(function (t) {
+      return '<button class="fd-btn" data-tool="' + t.act + '">' + t.label + '</button>';
+    }).join('') + '<input type="file" accept="image/*" id="fd-file" hidden>';
+  }
+
+  function caretTo(el, atStart) {
+    try {
+      var r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(!!atStart);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+    } catch (e) { }
+  }
+
+  function cleanHTML(root) {
+    var c = root.cloneNode(true);
+    $$('[style]', c).forEach(function (e) {
+      e.style.removeProperty('--i');
+      if (!e.getAttribute('style')) e.removeAttribute('style');
+    });
+    return c.innerHTML;
+  }
+
+  function exec(cmd, val) {
+    try { document.execCommand('styleWithCSS', false, false); } catch (e) { }
+    try { document.execCommand(cmd, false, val || null); } catch (e) { }
+    afterEdit();
+  }
+
+  function afterEdit() {
+    var n = cur();
+    var b = document.querySelector('#fd-n-' + n.id + ' [data-body]');
+    if (!b) return;
+    S.html[n.id] = cleanHTML(b);
+    S.dirty[n.id] = 1;
+    stagger($('#fd-n-' + n.id));
+    saveLocal();
+    renderMap();
+    renderOutline();
+  }
+
+  function insertHTML(html) { exec('insertHTML', html); }
+
+  function applyTool(act) {
+    var n = cur();
+    var b = document.querySelector('#fd-n-' + n.id + ' [data-body]');
+    if (b) {
+      b.focus();
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !b.contains(sel.anchorNode)) caretTo(b, false);
+    }
+    if (act === 'h2') return exec('formatBlock', '<h2>');
+    if (act === 'p') return exec('formatBlock', '<p>');
+    if (act === 'bold') return exec('bold');
+    if (act === 'ul') return exec('insertUnorderedList');
+    if (act === 'undo') return exec('undo');
+    if (act === 'hr') return insertHTML('<hr>');
+    if (act === 'table') {
+      var rows = 3, cols = 3, h = '<table>';
+      for (var r = 0; r < rows; r++) {
+        h += '<tr>';
+        for (var c = 0; c < cols; c++) h += (r === 0 ? '<th>表头 ' + (c + 1) + '</th>' : '<td>内容</td>');
+        h += '</tr>';
+      }
+      return insertHTML(h + '</table><p><br></p>');
+    }
+    if (act === 'shape') { insertHTML(SHAPES[shapeI % SHAPES.length]); shapeI++; return; }
+    if (act === 'image') { $('#fd-file').click(); return; }
+    if (act === 'done') { setMode(null); return; }
+  }
+
+  function wireFile() {
+    $('#fd-file').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      if (f.size > 4 * 1024 * 1024) { toast('图片请控制在 4MB 以内（会内联进单文件）'); e.target.value = ''; return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        insertHTML('<img src="' + fr.result + '" alt="' + esc(f.name) + '"><p><br></p>');
+        toast('图片已插入并内联');
+      };
+      fr.readAsDataURL(f);
+      e.target.value = '';
+    });
+  }
+
+  function setMode(m) {
+    M.mode = (M.mode === m) ? null : m;
+    var n = cur();
+    $$('.fd-node').forEach(function (d) {
+      d.classList.remove('is-editing');
+      var b = $('[data-body]', d);
+      if (b) b.removeAttribute('contenteditable');
+    });
+    var node = $('#fd-n-' + n.id), body = $('[data-body]', node);
+    if (M.mode === 'edit' && body) {
+      body.setAttribute('contenteditable', 'true');
+      node.classList.add('is-editing');
+      body.focus();
+      caretTo(body, false);   // 否则浏览器会把整段内容选中，插入会覆盖全文
+    }
+    if (M.mode !== 'annotate') closeComposer();
+    document.body.classList.toggle('fd-editing', M.mode === 'edit');
+    document.body.classList.toggle('fd-annotating', M.mode === 'annotate');
+    $('#fd-m-edit').classList.toggle('is-on', M.mode === 'edit');
+    $('#fd-m-note').classList.toggle('is-on', M.mode === 'annotate');
+    if (M.mode === 'edit') toast('直接改文字；表格 / 图片 / 图形用下面工具条');
+    if (M.mode === 'annotate') toast('点页面上任意位置钉一条标注');
+  }
+
+  var onBodyInput = debounce(afterEdit, 320);
+
+  /* ============ 导出单文件 ============ */
+
+  function snapshot() {
+    var spec = JSON.parse(JSON.stringify({
+      id: M.spec.id, title: M.spec.title, subtitle: M.spec.subtitle,
+      start: M.spec.start, order: M.order, nodes: M.spec.nodes, edges: M.spec.edges
+    }));
+    spec.nodes = spec.nodes.map(function (n) {
+      var o = JSON.parse(JSON.stringify(n));
+      if (S.html[o.id] != null) o.html = S.html[o.id];
+      return o;
+    });
+    return spec;
+  }
+
+  function download(name, text) {
+    try {
+      var blob = new Blob([text], { type: 'text/html;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function exportSingle() {
+    if (!ASSETS.css || !ASSETS.js) { toast('请先 npm run build，从构建产物里导出'); return; }
+    var spec = snapshot();
+    var json = JSON.stringify(spec).replace(/</g, '\\u003c');
+    var doc = '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>' + esc(spec.title || spec.id) + '</title>\n' +
+      '<style data-flowdeck>' + ASSETS.css + '</style>\n</head>\n<body>\n' +
+      '<script>window.__DECK__=' + json + ';<\/script>\n' +
+      '<script data-flowdeck>' + ASSETS.js + '<\/script>\n</body>\n</html>\n';
+    if (download((spec.id || 'deck') + '.html', doc)) toast('已导出自包含单文件');
+    else toast('浏览器拦下了下载，允许下载后重试');
+  }
+
+  /* ============ 事件编排 ============ */
+
+  function wire() {
+    $('#fd-next').addEventListener('click', function () { goto(M.idx + 1); });
+    $('#fd-prev').addEventListener('click', function () { goto(M.idx - 1); });
+
+    $('#fd-dots').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (b) goto(parseInt(b.dataset.i, 10));
+    });
+
+    $('#fd-map-svg').addEventListener('click', function (e) {
+      var id = e.target.getAttribute && e.target.getAttribute('data-id');
+      if (id) goto(M.order.indexOf(id));
+    });
+
+    $('#fd-m-edit').addEventListener('click', function () { setMode('edit'); });
+    $('#fd-m-note').addEventListener('click', function () { setMode('annotate'); });
+    $('#fd-m-users').addEventListener('click', function () {
+      var p = $('#fd-panel');
+      var open = !p.classList.contains('is-open');
+      p.classList.toggle('is-open', open);
+      document.body.classList.toggle('fd-panel-open', open);
+    });
+    $('#fd-panel-close').addEventListener('click', function () {
+      $('#fd-panel').classList.remove('is-open');
+      document.body.classList.remove('fd-panel-open');
+    });
+    $('#fd-export').addEventListener('click', exportSingle);
+
+    $('#fd-reset-page').addEventListener('click', function () {
+      var id = cur().id;
+      delete S.html[id]; delete S.notes[id]; S.polls[id] = null; delete S.dirty[id];
+      var n = M.byId[id];
+      if (n.poll) S.polls[id] = n.poll.type === 'rating' ? { raters: {} } : { voters: {} };
+      $('[data-body]', $('#fd-n-' + id)).innerHTML = n.html || '';
+      stagger($('#fd-n-' + id));
+      saveLocal();
+      renderPins(id); renderPoll(id); renderNotes(); renderOutline(); renderMap();
+      toast('本页已回到初始状态');
+    });
+
+    $('#fd-reset-all').addEventListener('click', function () {
+      S.html = {}; S.notes = {}; S.polls = {}; S.dirty = {};
+      M.nodes.forEach(function (n) {
+        $('[data-body]', $('#fd-n-' + n.id)).innerHTML = n.html || '';
+        renderPins(n.id); renderPoll(n.id);
+        stagger($('#fd-n-' + n.id));
+      });
+      try { localStorage.removeItem(LSKEY()); } catch (e) { }
+      renderNotes(); renderOutline(); renderMap(); renderDots();
+      toast('全部数据已重置');
+    });
+
+    $('#fd-editbar').addEventListener('click', function (e) {
+      var act = e.target.getAttribute && e.target.getAttribute('data-tool');
+      if (act) applyTool(act);
+    });
+
+    $('#fd-world').addEventListener('input', function (e) {
+      if (e.target.matches && e.target.matches('[data-body]')) onBodyInput();
+    });
+
+    $('#fd-world').addEventListener('click', function (e) {
+      var voteBtn = e.target.closest ? e.target.closest('[data-vote]') : null;
+      if (voteBtn) {
+        /* 票要记到按钮所属的节点，而不是当前节点：画布上多个节点同时可见，
+           点邻居页的星星不该把票算到当前页（当前页没组件时还会直接丢票） */
+        var hostN = e.target.closest('.fd-node');
+        vote(hostN ? hostN.id.slice(5) : cur().id, parseInt(voteBtn.dataset.vote, 10));
+        return;
+      }
+
+      var pin = e.target.closest ? e.target.closest('.fd-pin') : null;
+      if (pin) {
+        var hostP = e.target.closest('.fd-node');
+        var id = hostP ? hostP.id.slice(5) : cur().id;
+        var note = noteList(id).filter(function (x) { return x.id === pin.dataset.note; })[0];
+        if (note) toast(note.who + '：' + note.text);
+        return;
+      }
+
+      if (M.mode === 'annotate') {
+        var nodeEl = e.target.closest ? e.target.closest('.fd-node') : null;
+        if (nodeEl && nodeEl.classList.contains('is-current')) openComposer(e.clientX, e.clientY, cur().id);
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var editing = M.mode === 'edit' || (e.target.matches && e.target.matches('[contenteditable="true"], textarea, input'));
+      if (editing) { if (e.key === 'Escape') setMode(null); return; }
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); goto(M.idx + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); goto(M.idx - 1); }
+      else if (e.key === 'e' || e.key === 'E') setMode('edit');
+      else if (e.key === 'a' || e.key === 'A') setMode('annotate');
+      else if (e.key === 'Escape') setMode(null);
+    });
+
+    var onResize = debounce(function () { applyCam(false); renderMap(); }, 120);
+    window.addEventListener('resize', onResize);
+
+    Trace.onPeers = renderPeople;
+  }
+
+  function onRemote(m) {
+    if (m.t === 'vote') {
+      var st = S.polls[m.nodeId];
+      if (!st) return;
+      if (M.byId[m.nodeId].poll.type === 'rating') st.raters[m.cid] = m.value;
+      else st.voters[m.cid] = m.value;
+      renderPoll(m.nodeId);
+      return;
+    }
+    if (m.t === 'note:add') {
+      if (!S.notes[m.nodeId]) S.notes[m.nodeId] = [];
+      var exists = S.notes[m.nodeId].some(function (x) { return x.id === m.note.id; });
+      if (!exists) S.notes[m.nodeId].push(m.note);
+      renderPins(m.nodeId); renderNotes(); renderDots(); renderOutline();
+      if (m.nodeId === cur().id) toast(m.note.who + ' 钉了一条标注');
+      return;
+    }
+    if (m.t === 'note:del') {
+      S.notes[m.nodeId] = noteList(m.nodeId).filter(function (x) { return x.id !== m.noteId; });
+      renderPins(m.nodeId); renderNotes(); renderDots(); renderOutline();
+      return;
+    }
+    if (m.t === 'poll:reset') { S.polls[m.nodeId] = null; renderPoll(m.nodeId); }
+  }
+
+  /* ============ 启动 ============ */
+
+  function boot(spec) {
+    M.spec = spec;
+    deckId = spec.id || 'deck';
+    normalize(spec);
+
+    loadLocal();
+    try { S.name = S.name || localStorage.getItem('flowdeck:name') || ''; } catch (e) { }
+
+    buildShell();
+    buildEditBar();
+    buildNodes();
+    renderPanel();
+    renderDots();
+    wire();
+    wireFile();
+
+    M.nodes.forEach(function (n) { renderPoll(n.id); renderPins(n.id); });
+
+    var h = (location.hash || '').replace('#', '');
+    var i = M.order.indexOf(h);
+    goto(i >= 0 ? i : 0, true);
+
+    Trace.join(deckId, onRemote, renderPeople);
+
+    requestAnimationFrame(function () { applyCam(false); renderMap(); });
+    setTimeout(function () { applyCam(false); renderMap(); }, 220);
+  }
+
+  function start() {
+    if (window.__DECK__) { boot(window.__DECK__); return; }
+    var src = document.body.getAttribute('data-deck') || './deck.json';
+    fetch(src).then(function (r) { return r.json(); }).then(boot).catch(function (e) {
+      document.body.innerHTML = '<div style="padding:40px;font:14px -apple-system,sans-serif;color:#6b6b76">' +
+        '没有读到规格文件：' + esc(src) + '<br>（localStorage 之外的本地读取需要起一个静态服务，例如 npm start）</div>';
+    });
+  }
+
+  window.FlowDeck = {
+    goto: goto, snapshot: snapshot, exportSingle: exportSingle,
+    state: S, model: M, transport: Trace, assets: ASSETS
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
+</body>
+</html>
