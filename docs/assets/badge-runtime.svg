@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="268" height="34" viewBox="0 0 268 34" role="img" aria-label="RUNTIME: zero deps &#183; single file">
+  <defs><filter id="soft" x="-8%" y="-30%" width="116%" height="180%"><feDropShadow dx="0" dy="2.5" stdDeviation="2.6" flood-color="#1b1b20" flood-opacity=".12"/></filter>
+  <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a32"/><stop offset="1" stop-color="#1b1b20"/></linearGradient>
+  <linearGradient id="indigo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b7aff"/><stop offset="1" stop-color="#201C63"/></linearGradient>
+  <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f7f4ec"/></linearGradient></defs>
+  <g filter="url(#soft)" font-family="'SF Mono',Menlo,Consolas,'Liberation Mono',monospace">
+    <rect width="268" height="34" rx="10" fill="url(#paper)" stroke="#1b1b20" stroke-width="1.55"/>
+    <rect width="5" height="34" rx="2.5" fill="#5b6cff"/>
+    <text x="18" y="21.5" font-size="10" font-weight="700" letter-spacing="1.5" fill="#6b6b76">RUNTIME</text>
+    <text x="92" y="21.5" font-size="12" font-weight="600" fill="#1b1b20">zero deps &#183; single file</text>
+  </g>
+</svg>
