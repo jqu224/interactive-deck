@@ -1,6 +1,6 @@
 {
   "name": "interactive-deck",
-  "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=18"
