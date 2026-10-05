@@ -98,3 +98,7 @@ Deck 内：`→` `空格` 下一页 · `←` 上一页 · `E` 就地编辑 · `A
 | **作者 / 智能体** | 一份规格一个站点；直接改 `decks/*.json` 再构建 | [decks/](decks/) |
 | **Host** | 就地编辑、单文件导出、标注复盘 | [docs/realtime-plan.md](docs/realtime-plan.md) |
 | **观众** | 定向行进、投票、评分、小地图导航 | [dist/](dist/) |
+
+## 许可
+
+[MIT](LICENSE) — Copyright (c) 2026 jqu224

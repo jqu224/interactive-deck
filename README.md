@@ -98,3 +98,7 @@ Inside a deck: `→` `Space` next · `←` back · `E` edit in place · `A` anno
 | **Author / agent** | one spec, one site; edit `decks/*.json` directly and rebuild | [decks/](decks/) |
 | **Host** | in-place editing, single-file export, annotation review | [docs/realtime-plan.md](docs/realtime-plan.md) |
 | **Viewer** | directional travel, polls, ratings, minimap navigation | [dist/](dist/) |
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 jqu224
