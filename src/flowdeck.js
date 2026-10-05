@@ -61,8 +61,99 @@
   }, 240);
 
   /* ============ 房间同步层 ============ */
-  /* 同一套消息协议两种承载：BroadcastChannel（本地多标签/多窗口）
-     或 WebSocket（把 join 换成 new WebSocket，消息收发完全一致）。 */
+  /* Transport：BroadcastChannel（无 ?ws= 时的本地多窗口）或 WebSocket（服务器权威）。
+     WS 路径只发意图、只吃 seq 事实；学员 goto 被钉死，只能跟 nav。 */
+
+  var Room = {
+    mode: 'bc',          // 'bc' | 'ws'
+    role: null,          // host | guest | null
+    pid: null,
+    resumeToken: null,
+    lastSeq: 0,
+    followLocked: false, // guest under WS: local nav blocked
+    wsUrl: null,
+    roomId: null,
+    hostKey: null,
+    joinCode: null
+  };
+
+  function qs() {
+    try { return new URLSearchParams(location.search || ''); } catch (e) { return new URLSearchParams(); }
+  }
+
+  function readRoomQuery() {
+    var q = qs();
+    var ws = q.get('ws');
+    if (!ws) return false;
+    Room.mode = 'ws';
+    Room.roomId = q.get('room') || 'demo';
+    Room.hostKey = q.get('hostKey') || null;
+    Room.joinCode = q.get('code') || null;
+    if (ws === '1' || ws === 'true') {
+      var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      Room.wsUrl = proto + '//' + location.host + '/ws?room=' + encodeURIComponent(Room.roomId);
+    } else {
+      Room.wsUrl = ws.indexOf('room=') >= 0 ? ws
+        : (ws + (ws.indexOf('?') >= 0 ? '&' : '?') + 'room=' + encodeURIComponent(Room.roomId));
+    }
+    try {
+      var tok = sessionStorage.getItem('fd:resume:' + Room.roomId);
+      if (tok) Room.resumeToken = tok;
+    } catch (e) { }
+    return true;
+  }
+
+  function cursorToIndex(cursor) {
+    if (cursor == null) return -1;
+    if (typeof cursor === 'object' && cursor.idx != null) return clamp(Number(cursor.idx), 0, M.order.length - 1);
+    var i = M.order.indexOf(String(cursor));
+    return i;
+  }
+
+  function applyNavFact(fact) {
+    if (!fact || fact.seq <= Room.lastSeq) return;
+    Room.lastSeq = fact.seq;
+    var i = cursorToIndex(fact.cursor);
+    if (i < 0) return;
+    goto(i, false, true);
+  }
+
+  function applyWelcome(msg) {
+    if (!msg) return;
+    Room.pid = msg.pid;
+    Room.role = msg.role;
+    Room.resumeToken = msg.resumeToken;
+    Room.lastSeq = msg.seq || 0;
+    Room.followLocked = Room.role === 'guest';
+    try {
+      if (Room.roomId && msg.resumeToken) {
+        sessionStorage.setItem('fd:resume:' + Room.roomId, msg.resumeToken);
+      }
+    } catch (e) { }
+    if (msg.snapshot && msg.snapshot.participants) {
+      Trace.peers = {};
+      Object.keys(msg.snapshot.participants).forEach(function (pid) {
+        Trace.peers[pid] = Date.now();
+      });
+      if (Trace.onPeers) Trace.onPeers();
+    }
+    if (msg.snapshot && msg.snapshot.cursor != null) {
+      var i = cursorToIndex(msg.snapshot.cursor);
+      if (i >= 0) goto(i, true, true);
+    }
+  }
+
+  function applyPresence(msg) {
+    if (!msg || msg.seq <= Room.lastSeq) return;
+    Room.lastSeq = msg.seq;
+    Trace.peers = {};
+    Object.keys(msg.participants || {}).forEach(function (pid) {
+      if (msg.participants[pid] && msg.participants[pid].online !== false) {
+        Trace.peers[pid] = Date.now();
+      }
+    });
+    if (Trace.onPeers) Trace.onPeers();
+  }
 
   var Trace = {
     cid: (function () {
@@ -72,11 +163,23 @@
         return v;
       } catch (e) { return uid(8); }
     })(),
-    ch: null, busKey: null, seen: {}, peers: {}, timer: null, onMsg: null, onPeers: null,
+    mode: 'bc',
+    ch: null, busKey: null, seen: {}, peers: {}, timer: null,
+    ws: null, onMsg: null, onPeers: null, backoff: 500,
 
     join: function (room, onMsg, onPeers) {
-      var self = this;
       this.onMsg = onMsg; this.onPeers = onPeers;
+      if (readRoomQuery()) {
+        this.mode = 'ws';
+        this.connectWs();
+        return;
+      }
+      this.mode = 'bc';
+      this.joinBroadcast(room);
+    },
+
+    joinBroadcast: function (room) {
+      var self = this;
       if (typeof BroadcastChannel === 'function') {
         this.ch = new BroadcastChannel('flowdeck:' + room);
         this.ch.onmessage = function (e) { self.recv(e.data); };
@@ -96,13 +199,70 @@
       this.prune();
     },
 
+    connectWs: function () {
+      var self = this;
+      if (!Room.wsUrl) return;
+      try { if (this.ws) this.ws.close(); } catch (e) { }
+      var sock = new WebSocket(Room.wsUrl);
+      this.ws = sock;
+      sock.onopen = function () {
+        self.backoff = 500;
+        if (Room.resumeToken) {
+          sock.send(JSON.stringify({
+            t: 'hello', resumeToken: Room.resumeToken,
+            name: S.name || '', lastSeq: Room.lastSeq
+          }));
+        } else if (Room.hostKey) {
+          sock.send(JSON.stringify({
+            t: 'hello', hostKey: Room.hostKey,
+            name: S.name || 'Host', lastSeq: Room.lastSeq
+          }));
+        } else if (Room.joinCode) {
+          sock.send(JSON.stringify({
+            t: 'join', code: Room.joinCode,
+            name: S.name || 'Guest', deviceId: self.cid
+          }));
+        }
+      };
+      sock.onmessage = function (e) {
+        try { self.onFact(JSON.parse(e.data)); } catch (err) { }
+      };
+      sock.onclose = function () {
+        if (self.mode !== 'ws') return;
+        var wait = self.backoff;
+        self.backoff = Math.min(15000, self.backoff * 2);
+        setTimeout(function () { self.connectWs(); }, wait);
+      };
+    },
+
+    onFact: function (m) {
+      if (!m || !m.t) return;
+      if (m.t === 'welcome') { applyWelcome(m); return; }
+      if (m.t === 'nav') { applyNavFact(m); return; }
+      if (m.t === 'presence') { applyPresence(m); return; }
+      if (m.t === 'error') {
+        try { console.warn('[flowdeck]', m.code, m.message); } catch (e) { }
+        if (typeof toast === 'function') toast(m.message || m.code || '房间错误');
+        return;
+      }
+      if (m.seq != null && m.seq <= Room.lastSeq) return;
+      if (m.seq != null) Room.lastSeq = m.seq;
+      if (this.onMsg) this.onMsg(m);
+    },
+
+    intent: function (m) {
+      if (this.mode !== 'ws' || !this.ws || this.ws.readyState !== 1) return;
+      try { this.ws.send(JSON.stringify(m)); } catch (e) { }
+    },
+
     post: function (m) {
+      if (this.mode === 'ws') return; // P0: votes/notes stay local until server widgets land
       m._n = uid(12);
       if (this.ch) this.ch.postMessage(m);
       else if (this.busKey) { try { localStorage.setItem(this.busKey, JSON.stringify(m)); } catch (e) { } }
     },
 
-    pub: function (m) { this.post(m); this.recv(m); },
+    pub: function (m) { this.post(m); if (this.mode === 'bc') this.recv(m); },
 
     recv: function (m) {
       if (!m || !m._n || this.seen[m._n]) return;
@@ -370,8 +530,17 @@
 
   /* ============ 跳转 ============ */
 
-  function goto(i, noPush) {
+  function goto(i, noPush, fromFact) {
     i = clamp(i, 0, M.order.length - 1);
+    /* WS guest: only nav facts move the camera. WS host: local clicks become host:nav intents. */
+    if (Room.mode === 'ws' && !fromFact) {
+      if (Room.followLocked || Room.role === 'guest') return;
+      if (Room.role === 'host' || Room.role === 'cohost') {
+        Trace.intent({ t: 'host:nav', nodeId: M.order[i] });
+        return;
+      }
+      /* role still null (pre-welcome): allow local bootstrap jump */
+    }
     M.idx = i;
     var n = cur();
 
@@ -983,6 +1152,7 @@
     M.spec = spec;
     deckId = spec.id || 'deck';
     normalize(spec);
+    readRoomQuery();
 
     loadLocal();
     try { S.name = S.name || localStorage.getItem('flowdeck:name') || ''; } catch (e) { }
@@ -1018,7 +1188,7 @@
 
   window.FlowDeck = {
     goto: goto, snapshot: snapshot, exportSingle: exportSingle,
-    state: S, model: M, transport: Trace, assets: ASSETS
+    state: S, model: M, transport: Trace, room: Room, assets: ASSETS
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

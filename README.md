@@ -6,8 +6,8 @@
 
 <div align="center">
 
-[![English](https://img.shields.io/badge/lang-English-201C63?style=for-the-badge&labelColor=0d1117)](./README.md)
-[![中文](https://img.shields.io/badge/lang-%E4%B8%AD%E6%96%87-8b949e?style=for-the-badge&labelColor=0d1117)](./README.zh-CN.md)
+[![English](docs/assets/lang-en-on.svg)](./README.md)
+[![中文](docs/assets/lang-zh-off.svg)](./README.zh-CN.md)
 
 </div>
 
@@ -16,11 +16,16 @@
 **A complete, interactive, permission-aware HTML deck platform**
 — one JSON spec builds one self-contained site: edit live, present, put it to a vote.
 
-[![build](https://img.shields.io/badge/build-2_decks_%C2%B7_11_nodes_%C2%B7_4_polls-201C63?style=flat-square)](scripts/build.mjs)
-[![runtime](https://img.shields.io/badge/runtime-zero_deps_%C2%B7_single_file_output-555555?style=flat-square)](src/)
-[![agents](https://img.shields.io/badge/agents-Codex_%7C_Workbody_%7C_Claude_Code-555555?style=flat-square)](decks/)
-[![present](https://img.shields.io/badge/present-host_live_edit_%C2%B7_%E2%89%A450_viewers-555555?style=flat-square)](docs/realtime-plan.md)
-[![node](https://img.shields.io/badge/node-%3E%3D18-555555?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+<div align="center">
+
+[![build](docs/assets/badge-build.svg)](scripts/build.mjs)
+[![runtime](docs/assets/badge-runtime.svg)](src/)
+[![agents](docs/assets/badge-agents.svg)](decks/)
+<br/>
+[![present](docs/assets/badge-present.svg)](docs/realtime-plan.md)
+[![node](docs/assets/badge-node.svg)](https://nodejs.org/)
+
+</div>
 
 Decks are flow canvases: every page is a node on a shared canvas, edges carry the route, and the camera travels the flow with a sense of direction.
 

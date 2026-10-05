@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="88" height="32" viewBox="0 0 88 32" role="img" aria-label="Chinese">
+  <defs>
+    <filter id="s" x="-12%" y="-35%" width="124%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#1b1b20" flood-opacity=".1"/></filter>
+  </defs>
+  <g filter="url(#s)" font-family="'SF Mono',Menlo,Consolas,'Liberation Mono',monospace">
+    <rect width="88" height="32" rx="16" fill="#fffdf8" stroke="#1b1b20" stroke-width="1.5"/>
+    <text x="44" y="20.5" text-anchor="middle" font-size="12" font-weight="600" letter-spacing="1.4" fill="#8b8496">&#20013;&#25991;</text>
+  </g>
+</svg>
